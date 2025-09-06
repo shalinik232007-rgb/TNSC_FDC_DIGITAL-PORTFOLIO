@@ -1,0 +1,259 @@
+// ===== Utilities =====
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+const STORAGE_KEY = "sht_entries_v1";
+
+// BMI helpers
+function calcBMI(kg, cm) {
+  if (!kg || !cm) return null;
+  const m = cm / 100;
+  return +(kg / (m * m)).toFixed(1);
+}
+function bmiLabel(bmi) {
+  if (bmi == null) return "—";
+  if (bmi < 18.5) return "Underweight";
+  if (bmi < 25) return "Normal";
+  if (bmi < 30) return "Overweight";
+  return "Obese";
+}
+
+// Storage
+function loadEntries() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+function saveEntries(entries) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+}
+
+// ===== State =====
+let entries = loadEntries().sort((a, b) => a.date.localeCompare(b.date));
+let stepsChart, bpmChart;
+
+// ===== DOM refs =====
+const form = $("#entryForm");
+const msg = $("#formMsg");
+const bmiValue = $("#bmiValue");
+const bmiLabelEl = $("#bmiLabel");
+const waterValue = $("#waterValue");
+const stepsValue = $("#stepsValue");
+const sleepValue = $("#sleepValue");
+const historyBody = $("#historyBody");
+
+// Initialize date to today
+$("#date").value = new Date().toISOString().slice(0, 10);
+
+// ===== Rendering =====
+function renderStats(latest) {
+  if (!latest) {
+    bmiValue.textContent = "--";
+    bmiLabelEl.textContent = "Enter height & weight";
+    waterValue.textContent = "0";
+    stepsValue.textContent = "0";
+    sleepValue.textContent = "0";
+    return;
+  }
+  const bmi = calcBMI(latest.weight, latest.height);
+  bmiValue.textContent = bmi ?? "--";
+  bmiLabelEl.textContent = bmi ? bmiLabel(bmi) : "—";
+  waterValue.textContent = latest.water ?? 0;
+  stepsValue.textContent = latest.steps ?? 0;
+  sleepValue.textContent = latest.sleep ?? 0;
+}
+
+function renderTable() {
+  historyBody.innerHTML = "";
+
+  if (entries.length === 0) {
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = 9;
+    td.textContent = "No entries yet. Add your first entry above!";
+    td.style.color = "#95a1c2";
+    tr.appendChild(td);
+    historyBody.appendChild(tr);
+    return;
+  }
+
+  entries.forEach((e, idx) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${e.date}</td>
+      <td>${e.height}</td>
+      <td>${e.weight}</td>
+      <td>${calcBMI(e.weight, e.height) ?? "—"}</td>
+      <td>${e.steps}</td>
+      <td>${e.water}</td>
+      <td>${e.sleep}</td>
+      <td>${e.bpm}</td>
+      <td>
+        <button class="btn" data-edit="${idx}">Edit</button>
+        <button class="btn danger" data-del="${idx}">Delete</button>
+      </td>
+    `;
+    historyBody.appendChild(tr);
+  });
+}
+
+function renderCharts() {
+  const last7 = entries.slice(-7);
+  const labels = last7.map((e) => e.date);
+  const steps = last7.map((e) => e.steps);
+  const bpm = last7.map((e) => e.bpm);
+
+  // Steps Chart
+  const stepsCtx = document.getElementById("stepsChart");
+  if (stepsChart) stepsChart.destroy();
+  stepsChart = new Chart(stepsCtx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Steps",
+          data: steps,
+          tension: 0.35,
+          borderWidth: 2,
+          pointRadius: 3
+        }
+      ]
+    },
+    options: {
+      maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { color: "#cdd7ff" }, grid: { color: "rgba(255,255,255,.08)" } },
+        y: { ticks: { color: "#cdd7ff" }, grid: { color: "rgba(255,255,255,.08)" } }
+      },
+      plugins: {
+        legend: { labels: { color: "#e8edff" } }
+      }
+    }
+  });
+
+  // BPM Chart
+  const bpmCtx = document.getElementById("bpmChart");
+  if (bpmChart) bpmChart.destroy();
+  bpmChart = new Chart(bpmCtx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Heart Rate (bpm)",
+          data: bpm,
+          tension: 0.35,
+          borderWidth: 2,
+          pointRadius: 3
+        }
+      ]
+    },
+    options: {
+      maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { color: "#cdd7ff" }, grid: { color: "rgba(255,255,255,.08)" } },
+        y: { ticks: { color: "#cdd7ff" }, grid: { color: "rgba(255,255,255,.08)" } }
+      },
+      plugins: {
+        legend: { labels: { color: "#e8edff" } }
+      }
+    }
+  });
+}
+
+function renderAll() {
+  renderStats(entries[entries.length - 1]);
+  renderTable();
+  renderCharts();
+}
+
+// ===== Form handling =====
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+
+  const entry = {
+    date: $("#date").value,
+    height: +$("#height").value,
+    weight: +$("#weight").value,
+    steps: +$("#steps").value,
+    water: +$("#water").value,
+    sleep: +$("#sleep").value,
+    bpm: +$("#bpm").value
+  };
+
+  // Validate date uniqueness (replace if same date exists)
+  const existingIdx = entries.findIndex((x) => x.date === entry.date);
+  if (existingIdx >= 0) {
+    entries[existingIdx] = entry;
+    toast("Updated entry for " + entry.date);
+  } else {
+    entries.push(entry);
+    toast("Saved entry for " + entry.date);
+  }
+
+  entries.sort((a, b) => a.date.localeCompare(b.date));
+  saveEntries(entries);
+  renderAll();
+});
+
+// Edit/Delete buttons
+historyBody.addEventListener("click", (e) => {
+  const t = e.target;
+  if (t.matches("[data-edit]")) {
+    const idx = +t.getAttribute("data-edit");
+    const item = entries[idx];
+    $("#date").value = item.date;
+    $("#height").value = item.height;
+    $("#weight").value = item.weight;
+    $("#steps").value = item.steps;
+    $("#water").value = item.water;
+    $("#sleep").value = item.sleep;
+    $("#bpm").value = item.bpm;
+    toast("Loaded entry for editing: " + item.date);
+  }
+  if (t.matches("[data-del]")) {
+    const idx = +t.getAttribute("data-del");
+    const d = entries[idx]?.date;
+    entries.splice(idx, 1);
+    saveEntries(entries);
+    renderAll();
+    toast("Deleted entry" + (d ? " for " + d : ""));
+  }
+});
+
+// Clear all
+$("#clearAll").addEventListener("click", () => {
+  if (confirm("This will remove all saved entries on this device. Continue?")) {
+    entries = [];
+    saveEntries(entries);
+    renderAll();
+    toast("All data cleared");
+  }
+});
+
+// Live BMI preview from inputs
+["height", "weight"].forEach((id) => {
+  $("#" + id).addEventListener("input", () => {
+    const h = +$("#height").value;
+    const w = +$("#weight").value;
+    const bmi = calcBMI(w, h);
+    bmiValue.textContent = bmi ?? "--";
+    bmiLabelEl.textContent = bmi ? bmiLabel(bmi) : "Enter height & weight";
+  });
+});
+
+// Simple toast via aria-live
+function toast(text) {
+  msg.textContent = text;
+  msg.classList.remove("sr-only");
+  setTimeout(() => {
+    msg.classList.add("sr-only");
+    msg.textContent = "";
+  }, 1800);
+}
+
+// Initial paint
+renderAll();

@@ -1,0 +1,147 @@
+smart health tracker:Ai po<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Smart Health Tracker</title>
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Chart.js CDN (for line charts) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+
+  <!-- Your app script -->
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <h1>Smart Health Tracker</h1>
+    <p class="tagline">Log your day. See your trends. Stay on track.</p>
+  </header>
+
+  <main class="container">
+    <!-- Quick stats -->
+    <section class="grid stats" aria-label="Quick stats">
+      <article class="card">
+        <h2>BMI</h2>
+        <div class="metric">
+          <span id="bmiValue">--</span>
+          <small id="bmiLabel">Enter height & weight</small>
+        </div>
+      </article>
+
+      <article class="card">
+        <h2>Water</h2>
+        <div class="metric">
+          <span id="waterValue">0</span>
+          <small>glasses today</small>
+        </div>
+      </article>
+
+      <article class="card">
+        <h2>Steps</h2>
+        <div class="metric">
+          <span id="stepsValue">0</span>
+          <small>today</small>
+        </div>
+      </article>
+
+      <article class="card">
+        <h2>Sleep</h2>
+        <div class="metric">
+          <span id="sleepValue">0</span>
+          <small>hours last night</small>
+        </div>
+      </article>
+    </section>
+
+    <!-- Input form -->
+    <section class="card card--form" aria-label="Add today's entry">
+      <h2>Add Today’s Entry</h2>
+      <form id="entryForm">
+        <div class="form-grid">
+          <label>
+            Date
+            <input type="date" id="date" required />
+          </label>
+
+          <label>
+            Height (cm)
+            <input type="number" id="height" min="50" max="300" step="0.1" placeholder="170" required />
+          </label>
+
+          <label>
+            Weight (kg)
+            <input type="number" id="weight" min="10" max="400" step="0.1" placeholder="65.5" required />
+          </label>
+
+          <label>
+            Steps
+            <input type="number" id="steps" min="0" step="1" placeholder="8000" required />
+          </label>
+
+          <label>
+            Water (glasses)
+            <input type="number" id="water" min="0" step="1" placeholder="8" required />
+          </label>
+
+          <label>
+            Sleep (hours)
+            <input type="number" id="sleep" min="0" max="24" step="0.1" placeholder="7.5" required />
+          </label>
+
+          <label>
+            Heart Rate (bpm)
+            <input type="number" id="bpm" min="20" max="240" step="1" placeholder="72" required />
+          </label>
+        </div>
+
+        <div class="buttons">
+          <button type="submit" class="btn primary">Save Entry</button>
+          <button type="button" id="clearAll" class="btn danger">Clear All Data</button>
+        </div>
+
+        <p id="formMsg" class="sr-only" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <!-- Charts -->
+    <section class="grid charts" aria-label="Trends">
+      <article class="card">
+        <h2>Steps Trend (Last 7)</h2>
+        <canvas id="stepsChart" height="180"></canvas>
+      </article>
+      <article class="card">
+        <h2>Heart Rate Trend (Last 7)</h2>
+        <canvas id="bpmChart" height="180"></canvas>
+      </article>
+    </section>
+
+    <!-- History table -->
+    <section class="card" aria-label="History">
+      <h2>History</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Height (cm)</th>
+              <th>Weight (kg)</th>
+              <th>BMI</th>
+              <th>Steps</th>
+              <th>Water</th>
+              <th>Sleep (h)</th>
+              <th>Heart Rate</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <small>Data is stored locally on your device.</small>
+  </footer>
+</body>
+</html>
